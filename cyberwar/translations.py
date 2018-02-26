@@ -302,7 +302,83 @@ class MobileAttributeInterface:
     EVENTS = [MoveCompleteEvent]
     RESPONSES = []
 NetworkTranslator.RegisterAttributeInterface(MobileAttributeInterface)
-        
+
+
+class StayCommand:
+    CMD = b"stay"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        message = b"CMD stay braininterface/1.0\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"  # END
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        return cls()
+
+class StayReceivedEvent:
+    EVENT = b"stay_received"
+
+    @classmethod
+    def Marshall(cls, event):
+        body = pickle.dumps(event.location)
+        bodyLength = "{}".format(len(body))
+        message = b"EVENT stay_received braininterface/1.0\n"
+        message += b"Message: " + event.message.encode() + b"\n"
+        message += b"Content_length: " + bodyLength.encode() + b"\n"
+        message += b"\n"
+        message += body
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        location = pickle.loads(body)
+        return cls(location, headers[b"Message"].decode())
+
+    def __init__(self, location, message):
+        self.location = location
+        self.message = message
+
+class AutoExploitionCommand:
+    CMD = b"auto_exploition"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        message = b"CMD auto_exploition braininterface/1.0\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"  # END
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        return cls()
+
+class AutoReceivedEvent:
+    EVENT = b"auto_exploition_received"
+
+    @classmethod
+    def Marshall(cls, event):
+        body = pickle.dumps(event.location)
+        bodyLength = "{}".format(len(body))
+        message = b"EVENT auto_exploition_received braininterface/1.0\n"
+        message += b"Message: " + event.message.encode() + b"\n"
+        message += b"Content_length: " + bodyLength.encode() + b"\n"
+        message += b"\n"
+        message += body
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        location = pickle.loads(body)
+        return cls(location, headers[b"Message"].decode())
+
+    def __init__(self, location, message):
+        self.location = location
+        self.message = message
+
+
 class ScanCommand:
     CMD = b"scan"
     
