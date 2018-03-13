@@ -311,11 +311,93 @@ class MoveCompleteEvent:
         self.message = message
 
 
+class StayCommand:
+    CMD = b"stay"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        message = b"CMD stay braininterface/1.0\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"  # END
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        return cls()
+
+
+class StayReceivedResponse:
+
+    RESPONSE = b"stay_received"
+
+    @classmethod
+    def Marshall(cls, event):
+        body = pickle.dumps(event.data)
+        bodyLength = str(len(body))
+        message = b"RESPONSE stay_received braininterface/1.0\n"
+        message += b"Content_length: " + bodyLength.encode() + b"\n"
+        message += b"\n"
+        message += body
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        data = pickle.loads(body)
+        return cls(data)
+
+    def __init__(self, observableData):
+        self.data = observableData
+
+
+class AutoExploreCommand:
+    CMD = b"auto_explore"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        body = pickle.dumps(cmd.data)
+        bodyLength = str(len(body))
+        message = b"CMD auto_explore braininterface/1.0\n"
+        message += b"Content_length: " + bodyLength.encode() + b"\n"
+        message += b"\n"
+        message += body
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        data = pickle.loads(body)
+        return cls(data)
+
+    def __init__(self, command):
+        self.command = command
+
+
+class AutoExploreReceivedResponse:
+    RESPONSE = b"auto_explore_received"
+
+    @classmethod
+    def Marshall(cls, event):
+        body = pickle.dumps(event.data)
+        bodyLength = str(len(body))
+        message = b"RESPONSE auto_explore_received braininterface/1.0\n"
+        message += b"Content_length: " + bodyLength.encode() + b"\n"
+        message += b"\n"
+        message += body
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        data = pickle.loads(body)
+        return cls(data)
+
+    def __init__(self, observableData):
+        self.data = observableData
+
+
 class MobileAttributeInterface:
     ATTRIBUTE_NAME = "mobile"
-    COMMANDS = [MoveCommand]
+    COMMANDS = [MoveCommand, StayCommand, AutoExploreCommand]
     EVENTS = [MoveCompleteEvent]
-    RESPONSES = []
+    RESPONSES = [AutoExploreReceivedResponse, StayReceivedResponse]
 
 
 NetworkTranslator.RegisterAttributeInterface(MobileAttributeInterface)
@@ -385,10 +467,47 @@ class ObjectMoveEvent:
         self.status = status
 
 
+class GetMapCommand:
+    CMD = b"get_map"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        message = b"CMD get_map braininterface/1.0\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"  # END
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        return cls()
+
+
+class MapInfoResponse:
+    RESPONSE = b"map_info"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        body = pickle.dumps(cmd.scanResults)
+        bodyLength = "{}".format(len(body))
+        message = b"RESPONSE map_info braininterface/1.0\n"
+        message += b"Content_length: " + bodyLength.encode() + b"\n"
+        message += b"\n"
+        message += body
+        return message
+
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        scanResults = pickle.loads(body)
+        return cls(scanResults)
+
+    def __init__(self, scanResults):
+        self.scanResults = scanResults
+
+
 class ObserverAttributeInterface:
     ATTRIBUTE_NAME = "observer"
-    COMMANDS = [ScanCommand]
-    RESPONSES = [ScanResponse]
+    COMMANDS = [ScanCommand, GetMapCommand]
+    RESPONSES = [ScanResponse, MapInfoResponse]
     EVENTS = [ObjectMoveEvent]
 
 
@@ -461,109 +580,11 @@ class DamageEvent:
         self.message = message
 
 
-class StayCommand:
-    CMD = b"stay"
-
-    @classmethod
-    def Marshall(cls, cmd):
-        message = b"CMD stay braininterface/1.0\n"
-        message += b"Content_length: 0\n"
-        message += b"\n"  # END
-        return message
-
-    @classmethod
-    def Unmarshall(cls, headers, body):
-        return cls()
-
-
-class StayReceivedEvent:
-    EVENT = b"stay_received"
-
-    @classmethod
-    def Marshall(cls, event):
-        message = b"EVENT stay_received braininterface/1.0\n"
-        message += b"Content_length: 0\n"
-        message += b"\n"
-        return message
-
-    @classmethod
-    def Unmarshall(cls, headers, body):
-        return cls()
-
-
-class AutoExploreCommand:
-    CMD = b"auto_explore"
-
-    @classmethod
-    def Marshall(cls, cmd):
-        message = b"CMD auto_explore braininterface/1.0\n"
-        message += b"Content_length: 0\n"
-        message += b"\n"  # END
-        return message
-
-    @classmethod
-    def Unmarshall(cls, headers, body):
-        return cls()
-
-
-class AutoExploreReceivedEvent:
-    EVENT = b"auto_explore_received"
-
-    @classmethod
-    def Marshall(cls, event):
-        message = b"EVENT auto_explore_received braininterface/1.0\n"
-        message += b"Content_length: 0\n"
-        message += b"\n"
-        return message
-
-    @classmethod
-    def Unmarshall(cls, headers, body):
-        location = pickle.loads(body)
-        return cls()
-
-
-class GetMapCommand:
-    CMD = b"get_map"
-
-    @classmethod
-    def Marshall(cls, cmd):
-        message = b"CMD get_map braininterface/1.0\n"
-        message += b"Content_length: 0\n"
-        message += b"\n"  # END
-        return message
-
-    @classmethod
-    def Unmarshall(cls, headers, body):
-        return cls()
-
-
-class MapInfoResponse:
-    RESPONSE = b"map_info"
-
-    @classmethod
-    def Marshall(cls, cmd):
-        body = pickle.dumps(cmd.scanResults)
-        bodyLength = "{}".format(len(body))
-        message = b"RESPONSE map_info braininterface/1.0\n"
-        message += b"Content_length: " + bodyLength.encode() + b"\n"
-        message += b"\n"
-        message += body
-        return message
-
-    @classmethod
-    def Unmarshall(cls, headers, body):
-        scanResults = pickle.loads(body)
-        return cls(scanResults)
-
-    def __init__(self, scanResults):
-        self.scanResults = scanResults
-
-
 class TangibleAttributeInterface:
     ATTRIBUTE_NAME = 'tangible'
-    COMMANDS = [StatusCommand, StayCommand, AutoExploreCommand, GetMapCommand]
-    RESPONSES = [StatusResponse, MapInfoResponse]
-    EVENTS = [DamageEvent, StayReceivedEvent, AutoExploreReceivedEvent]
+    COMMANDS = [StatusCommand]
+    RESPONSES = [StatusResponse]
+    EVENTS = [DamageEvent]
 
 
 NetworkTranslator.RegisterAttributeInterface(TangibleAttributeInterface)

@@ -144,6 +144,37 @@ class RemoteConsole(CLIShell):
         mapPart = mapLine + "\n" + mapPart + "\n"
         return mapPart + textPart + "\n"
 
+    def createMapResultsDisplay(self, scanResults):
+        mapPart = ""
+        textPart = ""
+        n = 50
+        mapLine = [["*" for col in range(n)] for row in range(n)]
+        lastY = None
+        for coord in scanResults:
+            objDataList = scanResults[coord]
+            x, y = coord
+            obj = None
+            for objData in objDataList:
+                d = dict(objData)
+                if d["type"] == "terrain":
+                    terrain = d["identifier"]
+                elif d["type"] == "object":
+                    obj = self.createObjectDisplay(objData, indent="\t")
+            if obj is not None:
+                mapLine[x][y] = "O"
+                textPart += "Object at {}: \n{}\n".format(coord, obj)
+            elif terrain == "land":
+                mapLine[x][y] = "#"
+            elif terrain == "water":
+                mapLine[x][y] = "="
+        for i in range(n):
+            for j in range(n):
+                mapPart += mapLine[n - 1 - i][j]
+            mapPart += "\n"
+
+        mapPart = "\n" + mapPart + "\n"
+        return mapPart + textPart + "\n"
+
     def handleNetworkData(self, protocol, data):
         if isinstance(data, translations.BrainConnectResponse):
             if protocol.objAttributes != data.attributes:
@@ -176,12 +207,12 @@ class RemoteConsole(CLIShell):
             self.transport.write("{} hit {} for {} points of damage (took {} points of damage). {}".format(protocol.identifier, data.targetObjectIdentifier, data.targetDamage, data.damage, data.message))
         elif isinstance(data, translations.ReprogramResponse):
             self.transport.write("Reprogram of {} {}. {}\n\n".format(data.path, (data.success and "successful" or "unsuccessful"), data.message))
-        elif isinstance(data, translations.StayReceivedEvent):
+        elif isinstance(data, translations.StayReceivedResponse):
             self.transport.write("Stay Command Recieved.\n\n")
-        elif isinstance(data, translations.AutoExploreReceivedEvent):
+        elif isinstance(data, translations.AutoExploreReceivedResponse):
             self.transport.write("Auto Explore Begin.\n\n")
         elif isinstance(data, translations.MapInfoResponse):
-            self.transport.write(self.createScanResultsDisplay(data.scanResults))
+            self.transport.write(self.createMapResultsDisplay(data.scanResults))
             self.transport.write("\n")
         else:
             self.transport.write("Got {}\n\n".format(data))
