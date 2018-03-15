@@ -354,21 +354,20 @@ class AutoExploreCommand:
 
     @classmethod
     def Marshall(cls, cmd):
-        body = pickle.dumps(cmd.data)
-        bodyLength = str(len(body))
+        directionName = cmd.direction.encode()
         message = b"CMD auto_explore braininterface/1.0\n"
-        message += b"Content_length: " + bodyLength.encode() + b"\n"
-        message += b"\n"
-        message += body
+        message += b"Direction: " + directionName + b"\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"  # END
         return message
 
     @classmethod
     def Unmarshall(cls, headers, body):
-        data = pickle.loads(body)
-        return cls(data)
+        directionName = headers[b"Direction"].decode()
+        return cls(directionName)
 
-    def __init__(self, command):
-        self.command = command
+    def __init__(self, direction):
+        self.direction = direction
 
 
 class AutoExploreReceivedResponse:

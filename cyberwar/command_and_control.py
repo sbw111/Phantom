@@ -169,7 +169,7 @@ class RemoteConsole(CLIShell):
                 mapLine[x][y] = "="
         for i in range(n):
             for j in range(n):
-                mapPart += mapLine[n - 1 - i][j]
+                mapPart += mapLine[j][n - 1 - i]
             mapPart += "\n"
 
         mapPart = "\n" + mapPart + "\n"
@@ -307,7 +307,7 @@ class RemoteConsole(CLIShell):
         elif cmd == "status":
             protocol.transport.write(protocol.translator.marshallToNetwork(translations.StatusCommand()))
         elif cmd == "auto_explore":
-            protocol.transport.write(protocol.translator.marshallToNetwork(translations.AutoExploreCommand()))
+            protocol.transport.write(protocol.translator.marshallToNetwork(translations.AutoExploreCommand(args[0].lower())))
         elif cmd == "stay":
             protocol.transport.write(protocol.translator.marshallToNetwork(translations.StayCommand()))
         elif cmd == "getmap":

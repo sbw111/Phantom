@@ -30,7 +30,11 @@ class BrainCore:
         self.loop = 0
         self.id = None
         self.last_direction = None
-        self.location = None
+        self.location = None, None
+        self.perdiction_location = None, None
+        self.objAttributes = None
+        self.step = 0
+        self.higher_move = ["aaaa"]
 
     def getNextMessage(self, translator, buffer):
         complete, mData = translator.HasMessage(buffer)
@@ -42,7 +46,7 @@ class BrainCore:
         return msg, buffer
 
     def sendMove(self, direction):
-        self.last_direction = direction
+        # self.last_direction = direction
         if direction in self.DIRECTIONS_SHORT:
             direction = self.DIRECTIONS_SHORT[direction]
         cmdObj = translations.MoveCommand(direction)
@@ -50,24 +54,33 @@ class BrainCore:
         os.write(self.gameSocket.fileno(), sendData)
 
     def getDirection(self):
+        if len(self.higher_move) > 1:
+            direction = self.higher_move[1]
+            del self.higher_move[1]
+            return direction
         if "s" in self.last_direction:
-            if self.location[1] < self.game_size - 1:
+            if self.location[1] == 0:
                 self.moveable = False
         elif "n" in self.last_direction:
-            if self.location[1] >= 1:
+            if self.location[1] == self.game_size - 1:
                 self.moveable = False
         return self.last_direction
 
     def autoExplore(self):
-        diretion = self.getDirection()
-        self.sendMove("w")
+        direction = self.getDirection()
+        self.step += 1
+        self.sendMove(direction)
 
     def autoScan(self):
-        os.write(self.ccSocket.fileno(), self.translator.marshallToNetwork(translations.ScanCommand()))
+        os.write(self.gameSocket.fileno(), self.translator.marshallToNetwork(translations.ScanCommand()))
 
     def stateCheck(self):
         if self.moveable:
-            self.autoExplore()
+            if self.step == 5:
+                self.step += 1
+                self.autoScan()
+            if self.step < 5:
+                self.autoExplore()
 
     def handleGameMsg(self, msg):
         if isinstance(msg, translations.ScanResponse):
@@ -76,22 +89,24 @@ class BrainCore:
                 for objData in objDataList:
                     d = dict(objData)
                     if d["type"] == "object":
-                        if objData[identifier] == self.id:
+                        if d["identifier"] == self.id:
                             self.location = coord
-                        elif coord[1] == self.location[1]:
-                            self.sendMove("w")
-                            self.location[1] -= 1
+                        elif coord[0] == self.location[0]:
+                            print(coord, '  ', self.location)
+                            self.higher_move.append("w")
+                            # self.location[0] -= 1
+            self.step = 0
 
-        elif isinstance(msg, translations.StatusResponse):
-            self.id = msg.data[identifier]
         try:
             os.write(self.ccSocket.fileno(), self.translator.marshallToNetwork(msg))
-        except:
+            # print("send", msg, self.location[0], self.location[1])
+        except Exception as e:
             self.ccSocket = None
+            print("lost connection", e)
 
     def handleCCMsg(self, ccmsg):
         if isinstance(ccmsg, translations.AutoExploreCommand):
-            self.last_direction = ccmsg.command
+            self.last_direction = ccmsg.direction
             self.moveable = True
             respond = self.translator.marshallToNetwork(translations.AutoExploreReceivedResponse("success"))
             os.write(self.ccSocket.fileno(), respond)
@@ -109,7 +124,7 @@ class BrainCore:
         hb = None
         gameDataStream = b""
         ccDataStream = b""
-        os.write(self.ccSocket.fileno(), self.translator.marshallToNetwork(translations.StatusCommand()))
+        # os.write(self.ccSocket.fileno(), self.translator.marshallToNetwork(translations.StatusCommand()))
         while True:
             self.loop += 1
             gameData = os.read(self.gameSocket.fileno(), 1024)  # max of 1024
@@ -119,6 +134,8 @@ class BrainCore:
                 msg, gameDataStream = self.getNextMessage(self.translator, gameDataStream)
                 if isinstance(msg, translations.BrainConnectResponse):
                     self.translator = translations.NetworkTranslator(*msg.attributes)
+                    self.id = msg.identifier
+                    self.objAttributes = msg.attributes
                     hb = msg
             if (not gameData) and hb and (self.loop % 30 == 0) and self.ccSocket:
                 # every thirty seconds, send heartbeat to cc
@@ -137,16 +154,14 @@ class BrainCore:
                 self.ccSocket = None
 
             if msg and self.ccSocket:
-                handleGameMsg(msg)
+                self.handleGameMsg(msg)
             ccDataStream += ccData
             ccmsg = None
             if ccDataStream:
                 ccmsg, ccDataStream = self.getNextMessage(self.translator, ccDataStream)
             if ccmsg:
-                handleCCMsg(ccmsg)
+                self.handleCCMsg(ccmsg)
 
-            if loop % 5 == 0:
-                self.autoScan()
             self.stateCheck()
             time.sleep(self.heartbeat)
 
