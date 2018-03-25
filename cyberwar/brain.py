@@ -64,6 +64,12 @@ class BrainCore:
         elif "n" in self.last_direction:
             if self.location[1] == self.game_size - 1:
                 self.moveable = False
+        elif "w" in self.last_direction:
+            if self.location[0] == 0:
+                self.moveable = False
+        elif "e" in self.last_direction:
+            if self.location[0] == self.game_size - 1:
+                self.moveable = False
         return self.last_direction
 
     def autoExplore(self):
@@ -82,6 +88,10 @@ class BrainCore:
             if self.step < 5:
                 self.autoExplore()
 
+    def detectEnemy(self, coord, d):
+        if coord[0] == self.location[0]:
+            self.higher_move.append("w")
+
     def handleGameMsg(self, msg):
         if isinstance(msg, translations.ScanResponse):
             for coord, objDataList in msg.scanResults:
@@ -91,15 +101,12 @@ class BrainCore:
                     if d["type"] == "object":
                         if d["identifier"] == self.id:
                             self.location = coord
-                        elif coord[0] == self.location[0]:
-                            print(coord, '  ', self.location)
-                            self.higher_move.append("w")
-                            # self.location[0] -= 1
+                        else:
+                            self.detectEnemy(coord, d)
             self.step = 0
 
         try:
             os.write(self.ccSocket.fileno(), self.translator.marshallToNetwork(msg))
-            # print("send", msg, self.location[0], self.location[1])
         except Exception as e:
             self.ccSocket = None
             print("lost connection", e)
@@ -188,3 +195,4 @@ if __name__ == "__main__":
         f = open("/tmp/error.txt", "wb+")
         f.write(str(e).encode())
         f.close()
+
